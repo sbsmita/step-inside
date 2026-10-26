@@ -1,0 +1,14 @@
+data/
+web/demo/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+node_modules/
+cdk.out/
+.DS_Store
+vision/models/*.onnx
+vision/models/*.part
+cdk.out/
+node_modules/
+certs/

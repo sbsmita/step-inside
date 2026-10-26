@@ -1,0 +1,21 @@
+{
+  "name": "step-inside-infra",
+  "version": "0.1.0",
+  "private": true,
+  "bin": { "infra": "bin/app.ts" },
+  "scripts": {
+    "synth": "cdk synth",
+    "deploy": "cdk deploy --require-approval never",
+    "destroy": "cdk destroy"
+  },
+  "devDependencies": {
+    "@types/node": "22.9.0",
+    "aws-cdk": "2.170.0",
+    "ts-node": "10.9.2",
+    "typescript": "5.6.3"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "2.170.0",
+    "constructs": "10.4.2"
+  }
+}

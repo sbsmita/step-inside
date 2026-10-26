@@ -68,34 +68,125 @@ and pull the trigger, or pinch).
 **Three ways in:** scan with the camera, upload a photo or screenshot, or upload a video of the page (OpenCV picks
 its clearest frame). A page that already has a story is recognized and replayed instead of rebuilt.
 
-## Quick start (local)
+## Running the app
+
+### Prerequisites
+
+| Tool | Install | Notes |
+|---|---|---|
+| Python 3.12 | `brew install python@3.12` or [python.org](https://www.python.org/downloads/) | |
+| uv | `brew install uv` or `pip install uv` | Fast Python package manager |
+| Node.js 22 | `brew install node@22` | Only needed to minify JS; optional for local dev |
+| AWS CLI | `brew install awscli` | Needed for AI features (painting, voices, video) |
+
+### 1. Clone and install
 
 ```bash
-uv sync                                   # Python 3.12, pinned dependencies
-uv run python -m vision.models.fetch      # OpenCV Zoo + Depth Anything V2 ONNX models
+git clone <your-repo-url>
+cd opencv-hackathon
+uv sync                                   # installs Python 3.12 + all dependencies
+```
+
+### 2. Download the vision models
+
+```bash
+uv run python -m vision.models.fetch
+```
+
+This downloads OpenCV Zoo models (PP-OCRv3, YuNet, YOLOX, Depth Anything V2) into `vision/models/`. It takes
+a minute; they are ~250 MB total and only needed once.
+
+### 3. Set up AWS (for AI features)
+
+```bash
+aws login
+aws sts get-caller-identity          # confirm credentials work
+```
+
+Without AWS credentials the app still runs: OpenCV reads the page, the text is shown on a 3D screen, and the
+browser reads it aloud with browser speech. The painted moments, voices, and video require AWS.
+
+### 4. Start the server
+
+```bash
 uv run uvicorn server.app:app --port 8000
 ```
 
-Open http://localhost:8000 and scan a page with the camera, upload a photo or screenshot of a page, or upload a
-video of a page.
+Open **http://localhost:8000** in a browser. You should see the Step Inside home page.
 
-- **AI features** use your AWS credentials (`aws login`). Without them, the app still runs: the page's lines as
-  OpenCV read them, the page itself on the 3D screen, and browser speech.
-- **Spending guard:** at most 3 stories are made at once; image calls follow the account's per-minute quota and
-  `STABILITY_DAILY_LIMIT` (default 400 a day). Video needs nothing to be set: the app uses Luma Ray2 and finds the
-  clips bucket `step-inside-clips-<account>-us-west-2` by itself (the deploy creates it; without it, video is off).
-  Every setting can still be overridden: `VIDEO_BUCKET` (an S3 bucket in the model's region; empty turns video off) and
-  `VIDEO_MODEL` (`luma.ray-v2:0` by default, us-west-2, one clip at a time, ~$3.75 a 5 s clip; or
-  `amazon.nova-reel-v1:0`/`v1:1` where still served); `ANIMATE_MAX` (0 = every moment), `VIDEO_DAILY_LIMIT`,
-  `PLAY_WHEN` (`all`, the default with video: the story opens once completely made; `clip`: once the first moment is filmed; `still`: at ~8 s). Without `VIDEO_BUCKET` there are no clips;
-  everything else still runs.
-- **One clip by hand:** `VIDEO_BUCKET=<bucket> python -m agents.animator still.jpg "what moves" out.mp4`, then
-  `python -m vision.clip still.jpg out.mp4 --path fall` prints every score the critic uses.
-- **Meta Quest** on the same Wi-Fi: `scripts/lan-https.sh`, then open the printed `https://…:8443` address in the
-  Quest Browser and tap **Enter VR**. A = next line, B = pause, right thumbstick turns you.
-- **Tests:** `uv run pytest -q`. **Evaluations:** `python -m eval.sfm_accuracy <frames>`; for reading accuracy,
-  download the three public-domain illustrations named in `eval/make_pages.py`, then
-  `python -m eval.make_pages <illustrations> <pages>` and `python -m eval.ocr_accuracy <pages>`.
+To create a story you need to log in. In local development no password is required: creating a story works
+immediately. (On the deployed app, the password set in AWS Secrets Manager is required.)
+
+### 5. Make your first story
+
+Three ways to give the app a page:
+
+- **Upload a photo or screenshot** — click **Bring your own page**, then drag or click to upload any JPG or PNG of a
+  printed or digital page. Best with a clear, well-lit photo.
+- **Upload a video** — same button; OpenCV picks the sharpest frame from the video.
+- **Use the camera live** — click **Look at a page with the camera** (works on phones, laptops, Quest). OpenCV
+  coaches you ("move closer", "hold still") and captures the page when it is readable.
+
+The story builds in about 7–9 seconds without video; with video each moment is filmed as it is painted (~75 s per
+clip). A progress bar shows each step. When the first scene is ready, a magic door appears: click **✨ Step inside**
+to enter.
+
+### 6. Meta Quest (VR)
+
+Your Mac and Quest must be on the same Wi-Fi.
+
+```bash
+scripts/lan-https.sh
+```
+
+This prints a `https://…:8443` address. Open that address in the Quest Browser (accept the self-signed certificate
+warning), log in, open any story, then tap **Enter VR**. Controls in VR:
+
+| Button | Action |
+|---|---|
+| Left thumbstick | Glide through the world |
+| Right thumbstick | Turn |
+| A | Next line |
+| B | Pause / resume |
+| Point + trigger / pinch | Buttons (Replay, Next, Exit) |
+
+### Environment variables (optional overrides)
+
+| Variable | Default | What it does |
+|---|---|---|
+| `VIDEO_BUCKET` | auto-discovered | S3 bucket for video clips; empty string turns video off |
+| `VIDEO_MODEL` | `luma.ray-v2:0` | `luma.ray-v2:0` (us-west-2) or `amazon.nova-reel-v1:0` (us-east-1) |
+| `VIDEO_DAILY_LIMIT` | 24 | Max clips per day |
+| `ANIMATE_MAX` | 0 (every moment) | Max moments filmed per story |
+| `PLAY_WHEN` | `all` | `all`: wait for all clips; `clip`: start after first clip; `still`: start at ~8 s |
+| `STABILITY_DAILY_LIMIT` | 400 | Max image calls per day |
+| `APP_PASSWORD` | unset | Password to log in; unset = no login required (local dev) |
+| `PORT` | 8000 | Server port |
+
+Example — run locally with video enabled:
+
+```bash
+VIDEO_BUCKET=step-inside-clips-931628335592 \
+AWS_REGION=us-east-1 \
+PLAY_WHEN=all \
+uv run uvicorn server.app:app --port 8000
+```
+
+### Tests and evaluations
+
+```bash
+uv run pytest -q                          # 99 unit + integration tests
+
+# Clip critic
+python -m vision.clip still.jpg out.mp4 --path fall    # score a single clip
+
+# SfM (video → 3D) accuracy
+python -m eval.sfm_accuracy <frames>
+
+# OCR accuracy (needs public-domain illustrations; see eval/make_pages.py)
+python -m eval.make_pages <illustrations> <pages>
+python -m eval.ocr_accuracy <pages>
+```
 
 ## Deploy to AWS
 

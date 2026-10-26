@@ -1,0 +1,106 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Synthetic room renderer</title>
+  <style>html, body { margin: 0; background: #000; }</style>
+  <script type="importmap">
+    { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js" } }
+  </script>
+</head>
+<body>
+<script type="module">
+import * as THREE from "three";
+
+// Deterministic RNG so every run renders the same room.
+let seed = 7;
+const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+
+function canvasTexture(w, h, paint) {
+  const c = document.createElement("canvas");
+  c.width = w; c.height = h;
+  paint(c.getContext("2d"), w, h);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 8;
+  return t;
+}
+
+function posterWall(ctx, w, h) {
+  ctx.fillStyle = "#d9d4c7"; ctx.fillRect(0, 0, w, h);
+  for (let i = 0; i < 140; i++) {
+    ctx.fillStyle = `hsl(${rnd() * 360}, ${40 + rnd() * 50}%, ${30 + rnd() * 40}%)`;
+    const x = rnd() * w, y = rnd() * h, s = 20 + rnd() * 110;
+    const k = rnd();
+    if (k < 0.4) ctx.fillRect(x, y, s, s * (0.5 + rnd()));
+    else if (k < 0.7) { ctx.beginPath(); ctx.arc(x, y, s / 2, 0, 7); ctx.fill(); }
+    else { ctx.font = `bold ${Math.round(s / 2)}px sans-serif`; ctx.fillText("ABCDEFGHJKMNPRSTUVWXYZ".slice(i % 18, i % 18 + 3), x, y); }
+  }
+}
+
+function woodFloor(ctx, w, h) {
+  for (let y = 0; y < h; y += 32) {
+    for (let x = -(y % 96); x < w; x += 190) {
+      ctx.fillStyle = `hsl(28, ${35 + rnd() * 20}%, ${28 + rnd() * 18}%)`;
+      ctx.fillRect(x, y, 188, 30);
+      ctx.strokeStyle = "rgba(0,0,0,.25)";
+      for (let g = 0; g < 4; g++) { ctx.beginPath(); ctx.moveTo(x, y + rnd() * 30); ctx.lineTo(x + 188, y + rnd() * 30); ctx.stroke(); }
+    }
+  }
+}
+
+function patterned(ctx, w, h) {
+  ctx.fillStyle = `hsl(${rnd() * 360}, 45%, 45%)`; ctx.fillRect(0, 0, w, h);
+  for (let i = 0; i < 60; i++) {
+    ctx.fillStyle = `hsl(${rnd() * 360}, 60%, ${20 + rnd() * 60}%)`;
+    ctx.fillRect(rnd() * w, rnd() * h, 10 + rnd() * 50, 10 + rnd() * 50);
+  }
+}
+
+const W = 960, H = 720, HFOV = 65;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(W, H);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.append(renderer.domElement);
+const scene = new THREE.Scene();
+const vfov = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(HFOV / 2)) * H / W));
+const camera = new THREE.PerspectiveCamera(vfov, W / H, 0.05, 50);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x666655, 1.4));
+const sun = new THREE.DirectionalLight(0xffffff, 1.1); sun.position.set(2, 4, 3); scene.add(sun);
+
+const mat = (paint, w = 1024, h = 1024) => new THREE.MeshStandardMaterial({ map: canvasTexture(w, h, paint), roughness: 0.9 });
+const room = { w: 6, h: 3, d: 6 };
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(room.w, room.d), mat(woodFloor, 2048, 2048));
+floor.rotation.x = -Math.PI / 2; scene.add(floor);
+const back = new THREE.Mesh(new THREE.PlaneGeometry(room.w, room.h), mat(posterWall, 2048, 1024));
+back.position.set(0, room.h / 2, -room.d / 2); scene.add(back);
+for (const side of [-1, 1]) {
+  const wall = new THREE.Mesh(new THREE.PlaneGeometry(room.d, room.h), mat(posterWall, 2048, 1024));
+  wall.position.set(side * room.w / 2, room.h / 2, 0); wall.rotation.y = -side * Math.PI / 2; scene.add(wall);
+}
+const boxes = [[-1.4, 0.45, -1.6, 1.0, 0.9, 0.6], [0.6, 0.38, -0.9, 0.7, 0.75, 0.7], [1.7, 0.6, -2.2, 0.8, 1.2, 0.5],
+               [-0.3, 0.25, -0.2, 0.5, 0.5, 0.5], [-2.2, 0.8, -0.8, 0.5, 1.6, 0.5]];
+for (const [x, y, z, w, h, d] of boxes) {
+  const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(patterned, 512, 512));
+  b.position.set(x, y, z); scene.add(b);
+}
+const ball = new THREE.Mesh(new THREE.SphereGeometry(0.22, 32, 16), mat(patterned, 512, 256));
+ball.position.set(0.9, 0.22, 0.4); scene.add(ball);
+
+// Camera path: a 1.6 m sideways sweep at handheld height, looking at the middle of the room.
+const N = Number(new URLSearchParams(location.search).get("frames") || 40);
+const target = new THREE.Vector3(0, 0.8, -1.5);
+window.frames = [];
+window.render = (i) => {
+  const s = i / (N - 1);
+  camera.position.set(-0.8 + 1.6 * s, 1.4 + 0.04 * Math.sin(5 * s), 2.2 - 0.3 * s);
+  camera.lookAt(target);
+  renderer.render(scene, camera);
+  return { png: renderer.domElement.toDataURL("image/png"), position: camera.position.toArray(),
+           quaternion: camera.quaternion.toArray() };
+};
+window.meta = { width: W, height: H, hfov: HFOV, frames: N, room, target: target.toArray() };
+window.ready = true;
+</script>
+</body>
+</html>

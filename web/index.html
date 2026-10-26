@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Step Inside</title>
+  <meta name="description" content="Show it one page and live the story: painted all around you in 360°, read aloud line by line, on screen or in VR. Built on OpenCV 5 and AWS.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3l3 9h9l-7 5 3 9-8-6-8 6 3-9-7-5h9z' fill='%23ffd36b'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div class="sky" aria-hidden="true"></div>
+
+  <main id="home">
+    <header class="brand"><span class="mark" aria-hidden="true">✦</span> Step Inside
+      <button id="login-btn" type="button" class="pill login-btn" hidden>🔒 Log in</button>
+    </header>
+    <dialog id="login" class="login">
+      <form id="login-form" method="dialog">
+        <h2>Log in to create a story</h2>
+        <p class="note">Watching stories is open to everyone. Creating one needs the password you were given.</p>
+        <input id="login-pass" type="password" autocomplete="current-password" placeholder="Password" required>
+        <p id="login-msg" class="status" role="status"></p>
+        <div class="login-actions">
+          <button type="button" id="login-cancel" class="pill">Cancel</button>
+          <button type="submit" class="pill lead">Log in</button>
+        </div>
+      </form>
+    </dialog>
+
+    <section class="hero">
+      <h1>Live the story.</h1>
+      <p class="lede">Show it one page: a poem, a picture book, a screenshot. Moments later you're standing inside it,
+        painted all around you, every line read aloud. On screen, or in a VR headset.</p>
+      <div class="actions">
+        <button id="look-start" type="button" class="action lead">
+          <span class="icon" aria-hidden="true">📷</span><span class="what">Scan with camera</span>
+          <small>Point it at any page</small>
+        </button>
+        <label class="action">
+          <span class="icon" aria-hidden="true">🖼️</span><span class="what">Upload a page</span>
+          <small>A photo or a screenshot</small>
+          <input type="file" id="pick-image" accept="image/*">
+        </label>
+        <label class="action">
+          <span class="icon" aria-hidden="true">🎬</span><span class="what">Upload a video</span>
+          <small>We pick the clearest frame</small>
+          <input type="file" id="pick-video" accept="video/*">
+        </label>
+      </div>
+      <p id="home-status" class="status" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="shelf" id="mine" hidden>
+      <h2>Your stories</h2>
+      <ul id="stories" class="pages small"></ul>
+    </section>
+
+    <footer class="foot">OpenCV 5 reads and checks every page · agents on AWS write, paint and voice it · step in with a Meta Quest</footer>
+  </main>
+
+  <section id="experience" hidden aria-label="The story">
+    <div id="stage" class="stage">
+      <div id="look-overlay" class="look" hidden>
+        <video id="look-video" playsinline muted></video>
+        <div id="look-box" class="look-box" hidden></div>
+        <div class="look-hud">
+          <p id="look-say" role="status" aria-live="assertive">Starting the camera…</p>
+          <button id="look-stop" type="button" class="pill">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="topbar">
+      <button id="exit" type="button" class="pill" aria-label="Exit the story">✕ Exit</button>
+      <div class="title"><strong id="story-title">Step Inside</strong><span id="story-stage"></span></div>
+      <div class="topright">
+        <button id="info-toggle" type="button" class="pill" aria-expanded="false">ⓘ How it was made</button>
+        <span id="vr-slot"></span>
+      </div>
+    </div>
+
+    <button id="step-in" type="button" class="step-in" hidden>✨ Step inside</button>
+    <div id="dock" class="dock" title="Drag to look · W A S D to glide · in VR: left stick glides, right stick turns, point and pull the trigger (or pinch) to press a button">
+      <div class="dock-row">
+        <button id="dock-grip" type="button" class="dock-grip" aria-label="Move the caption box (drag)">⠿</button>
+        <div id="controls" class="controls" hidden>
+          <button id="t-play" type="button" class="ctl lead" disabled aria-label="Play">▶</button>
+          <button id="t-next" type="button" class="ctl" disabled aria-label="Next line">⏭</button>
+          <button id="t-replay" type="button" class="ctl" disabled aria-label="Replay">↺</button>
+        </div>
+      </div>
+      <p id="caption" class="caption" hidden aria-live="polite"></p>
+    </div>
+
+    <aside id="made" class="drawer" hidden>
+      <h2>How it was made</h2>
+      <figure id="made-page" class="page-fig"></figure>
+      <h3>OpenCV checked the story agent</h3>
+      <p id="made-check" class="note"></p>
+      <h3>Moments painted</h3>
+      <ol id="made-shots" class="shots"></ol>
+      <h3>The world</h3>
+      <p id="made-world" class="note"></p>
+      <h3>Agents and models</h3>
+      <dl id="made-models" class="facts"></dl>
+      <h3>Timings (since the upload)</h3>
+      <dl id="made-timings" class="facts"></dl>
+    </aside>
+  </section>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

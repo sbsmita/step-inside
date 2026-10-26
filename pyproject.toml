@@ -1,0 +1,34 @@
+[project]
+name = "step-inside"
+version = "0.1.0"
+description = "Turn a photo, page or short video into a 3D scene you can step into, built on OpenCV 5 and AWS"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "opencv-contrib-python-headless==5.0.0.93",
+    "numpy>=2.0,<3",
+    "fastapi==0.115.12",
+    "uvicorn[standard]==0.34.2",
+    "python-multipart==0.0.20",
+    "anthropic[bedrock]==2.1.0",
+    "boto3[crt]==1.43.118",
+    "trimesh==4.6.8",
+    "pillow==11.2.1",
+    "scipy==1.15.3",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==8.3.5",
+    "httpx==0.28.1",
+    "playwright==1.52.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["vision/tests"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["vision", "agents", "server"]

@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>What Changed?</title>
+  <meta name="description" content="Tells blind users what changed at home since the last scan, and guides them to fix it. Built on OpenCV 5 and AWS.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%231f5fd1'/%3E%3Ccircle cx='16' cy='16' r='6' fill='white'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <h1>What Changed?</h1>
+      <p class="tag">Your home, compared with how it should be. Only the differences get spoken.</p>
+    </div>
+    <div class="toggles">
+      <label class="switch"><input type="checkbox" id="lowvision"> Low-vision view</label>
+      <label class="switch"><input type="checkbox" id="mute"> Mute voice</label>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Modes">
+    <button role="tab" aria-selected="true" data-tab="demo">Try the demo</button>
+    <button role="tab" aria-selected="false" data-tab="live">Live camera</button>
+    <button role="tab" aria-selected="false" data-tab="compare">Compare two photos</button>
+    <button role="tab" aria-selected="false" data-tab="setup">Set up a home</button>
+  </nav>
+
+  <p id="say" class="say" role="status" aria-live="assertive">Pick a scenario below to hear what the app would say.</p>
+
+  <main>
+    <section id="tab-demo" class="panel" role="tabpanel">
+      <p class="hint">A sample home with a living room and a kitchen. Each scenario is a new camera frame; the app
+        finds which room it shows, compares it with the baseline, and speaks only what changed. No camera needed.</p>
+      <div id="scenarios" class="cards"></div>
+      <div class="result">
+        <div class="stage"><canvas id="demo-canvas" class="view" aria-hidden="true"></canvas></div>
+        <aside class="side">
+          <h2>Changes</h2>
+          <ul id="demo-items" class="items"></ul>
+          <h2>Agent trace</h2>
+          <ol id="demo-trace" class="trace"></ol>
+        </aside>
+      </div>
+    </section>
+
+    <section id="tab-live" class="panel" role="tabpanel" hidden>
+      <p class="hint">Point your camera at a room you set up earlier. Works on any phone or laptop browser.</p>
+      <div class="row">
+        <label>Home <input id="live-home" class="home-input" autocomplete="off"></label>
+        <button id="live-start" class="primary">Start camera</button>
+        <button id="live-scan" disabled>What's different?</button>
+        <label class="switch"><input type="checkbox" id="live-auto"> Keep checking</label>
+      </div>
+      <div class="result">
+        <div class="stage">
+          <video id="live-video" class="view" playsinline muted></video>
+          <canvas id="live-overlay" class="overlay" aria-hidden="true"></canvas>
+        </div>
+        <aside class="side">
+          <h2>Changes</h2>
+          <ul id="live-items" class="items"></ul>
+          <h2>Agent trace</h2>
+          <ol id="live-trace" class="trace"></ol>
+        </aside>
+      </div>
+    </section>
+
+    <section id="tab-compare" class="panel" role="tabpanel" hidden>
+      <p class="hint">Upload a "before" and an "after" photo of the same place, taken from roughly the same spot.</p>
+      <div class="row">
+        <label>Before <input type="file" id="cmp-before" accept="image/*"></label>
+        <label>After <input type="file" id="cmp-after" accept="image/*"></label>
+        <button id="cmp-run" class="primary">Compare</button>
+      </div>
+      <div class="result">
+        <div class="stage"><canvas id="cmp-canvas" class="view" aria-hidden="true"></canvas></div>
+        <aside class="side">
+          <h2>Changes</h2>
+          <ul id="cmp-items" class="items"></ul>
+          <h2>Agent trace</h2>
+          <ol id="cmp-trace" class="trace"></ol>
+        </aside>
+      </div>
+    </section>
+
+    <section id="tab-setup" class="panel" role="tabpanel" hidden>
+      <p class="hint">A sighted helper does this once: capture each room the way it should normally look.
+        Include furniture and walls; plain close-ups are rejected because they can't be recognized later.</p>
+      <div class="row">
+        <label>Home <input id="setup-home" class="home-input" autocomplete="off"></label>
+        <label>Room name <input id="setup-name" placeholder="living_room" autocomplete="off"></label>
+        <button id="setup-start" class="primary">Start camera</button>
+        <button id="setup-capture" disabled>Save this view</button>
+        <label class="file-btn">or upload <input type="file" id="setup-file" accept="image/*"></label>
+      </div>
+      <div class="result">
+        <div class="stage"><video id="setup-video" class="view" playsinline muted></video></div>
+        <aside class="side">
+          <h2>Saved views</h2>
+          <ul id="setup-list" class="keyframes"></ul>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span id="health">Checking service…</span>
+    <span>Spatial words come from OpenCV geometry, never from the language model.</span>
+  </footer>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

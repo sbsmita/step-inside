@@ -1,0 +1,17 @@
+.venv
+data
+archive
+eval
+infra
+**/__pycache__
+**/*.pyc
+.pytest_cache
+vision/models/*.onnx
+vision/models/*.part
+.git
+**/tests
+docs
+scripts
+certs
+samples
+*.md
