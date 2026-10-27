@@ -46,10 +46,12 @@ short illustrated film that a viewer watches inside VR, line by line. Output JSO
 line, no prose, no code fences, no blank lines.
 
 Line 1, the header:
-{{"title": at most 6 words, "style": how every picture is painted (if the page has artwork, describe its medium,
-palette and line work; otherwise choose a style that suits the text, e.g. "{DEFAULT_STYLE}"), "place": the main
+{{"title": at most 6 words, "style": how every picture is painted, at most 30 words. If the page has a picture, describe
+what YOU SEE in it, in your own words: its medium, outline weight, palette and how figures are drawn. Only for a page
+with no picture, choose a style that suits the text, "place": the main
 place where it happens, as scenery seen all around, at most 40 words, no people or animals, "cast": [{{"name": ...,
-"look": fixed appearance in at most 20 words (species, age, clothes, colours), "voice": "woman" | "man" | "child"}}],
+"look": fixed appearance in at most 20 words (species, age, clothes, colours), as drawn in
+the page's picture when the character appears there; every character looks different from the others, "voice": "woman" | "man" | "child"}}],
 "time": "day" | "night" | "dusk" | "dawn", "weather": "clear" | "clouds" | "rain" | "snow" | "storm" | "fog",
 "wind": "still" | "breeze" | "gusty"}}
 
@@ -68,8 +70,8 @@ ALL of the page's story text exactly once and in order; on a long page put sever
   character (two at most) doing what the lines say, filling the frame, with the place behind them; who is there
   (use cast names with their looks), the light and mood. Never a wide crowd, a stage full of people or a tiny figure
   in a big landscape: the picture will be filmed, and the character must be big enough to act. Literal and concrete: "when the blazing sun is gone"
-  is a sunset over the hills; "the traveller in the dark" is a traveller on a night road. Follow the words, not the
-  page's own picture, and make every moment look different from the others (new scene, view or action). No text,
+  is a sunset over the hills; "the traveller in the dark" is a traveller on a night road. Follow the words for what
+  happens, the page's picture for how characters look, and make every moment look different from the others (new scene, view or action). No text,
   letters or words in the picture.
 - effects: zero or more of "stars", "snow", "rain", "fireflies", "leaves", "sparkles" for ambient motion that fits.
 - action: the ONE movement these lines describe, which the viewer will see happen: "subject" is who or what moves
@@ -439,8 +441,10 @@ in VR. OpenCV has already read the page's printed lines; they are listed, number
 the page's text: refer to its lines by number. Output JSON Lines only, one object per line, no prose, no fences.
 
 Line 1, the header:
-{{"title": at most 6 words, "style": how every picture is painted, "place": the main place as scenery seen all
-around (at most 40 words, no people), "cast": [{{"name", "look": fixed appearance in at most 20 words, "voice":
+{{"title": at most 6 words, "style": how every picture is painted, at most 30 words: if the page has a picture,
+describe what YOU SEE in it (medium, outlines, palette, how figures are drawn), "place": the main place as scenery seen all
+around (at most 40 words, no people), "cast": [{{"name", "look": fixed appearance in at most 20 words, copied from
+the page's picture when the character is drawn there, "voice":
 "woman" | "man" | "child"}}], "time": "day" | "night" | "dusk" | "dawn", "weather": "clear" | "clouds" | "rain" |
 "snow" | "storm" | "fog", "wind": "still" | "breeze" | "gusty", "skip": [numbers of lines that are not the story:
 titles, author and illustrator credits, copyright notes, page numbers, headers], "fixes": {{"misread words as
@@ -583,6 +587,9 @@ def _is_title(line: str) -> bool:
 def _looks_like_text(line: str) -> bool:
     """Drop OCR lines that are decoration or junk: too short, or mostly not letters."""
     letters = sum(ch.isalpha() for ch in line)
+    words = re.findall(r"[A-Za-z']+", line)
+    if words and (sum(map(len, words)) / len(words) < 2.5 or max(map(len, words)) < 4):
+        return False  # OCR shreds of a drawing ("a a a a the han t")
     return letters >= 3 and letters / max(1, len(line.replace(" ", ""))) > 0.6
 
 

@@ -14,7 +14,7 @@
   <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#334155"/></marker></defs>
 
   <text x="24" y="34" font-size="22" class="t">Step Inside: architecture</text>
-  <text x="24" y="56" class="s">One photographed page in → OpenCV reads it, parallel agents plan, paint and voice it → you watch it line by line in ~8 s (browser or Meta Quest)</text>
+  <text x="24" y="56" class="s">One photographed page in → OpenCV reads it, parallel agents plan, paint and voice it → you watch it line by line (~8 s, or fully filmed in minutes) · browser or Meta Quest</text>
 
   <!-- The world comes alive (upgrades while the story plays) -->
   <path d="M590 550 V566" class="arrow"/>
@@ -35,8 +35,8 @@
   <rect x="900" y="598" width="276" height="108" class="box ai"/>
   <text x="914" y="620" class="t">Bedrock · Luma Ray2 + Inpaint</text>
   <text x="914" y="640" class="s">every moment → a film clip (async, S3;</text>
-  <text x="914" y="656" class="s">video off until enabled); critic: ORB</text>
-  <text x="914" y="672" class="s">fidelity, Farneback flow, cuts, loop point;</text>
+  <text x="914" y="656" class="s">us-west-2); OpenCV critic: ORB fidelity,</text>
+  <text x="914" y="672" class="s">Farneback flow, cuts, frozen, lettering;</text>
   <text x="914" y="690" class="s">Inpaint paints plates + each full world</text>
 
   <!-- Client -->
@@ -50,13 +50,14 @@
 
   <rect x="300" y="120" width="170" height="90" class="box aws"/>
   <text x="316" y="146" class="t">CloudFront</text>
-  <text x="316" y="168" class="s">HTTPS (WebXR needs it)</text>
-  <text x="316" y="186" class="s">edge-caches scene files</text>
+  <text x="316" y="168" class="s">HTTPS + WAF firewall</text>
+  <text x="316" y="186" class="s">secret origin header</text>
   <path d="M254 165 H300" class="arrow"/>
 
   <rect x="510" y="120" width="160" height="90" class="box aws"/>
   <text x="526" y="146" class="t">Load balancer</text>
   <text x="526" y="168" class="s">→ Fargate API</text>
+  <text x="526" y="186" class="s">password: Secrets Mgr</text>
   <path d="M470 165 H510" class="arrow"/>
 
   <!-- API container -->
@@ -92,7 +93,7 @@
   <text x="916" y="294" class="t">Amazon Bedrock · Nova Lite</text>
   <text x="916" y="314" class="s">reads the page image, streams the plan:</text>
   <text x="916" y="332" class="s">title, cast, spoken lines, moments</text>
-  <text x="916" y="350" class="s">(speakers and quotes fixed in code)</text>
+  <text x="916" y="350" class="s">if filtered: picks OCR lines by number</text>
 
   <rect x="900" y="380" width="276" height="76" class="box ai"/>
   <text x="916" y="404" class="t">Bedrock · Stable Image Core</text>
@@ -141,7 +142,7 @@
   <rect x="900" y="750" width="276" height="76" class="box aws"/>
   <text x="916" y="774" class="t">CloudWatch + X-Ray</text>
   <text x="916" y="794" class="s">container logs, pipeline execution logs,</text>
-  <text x="916" y="810" class="s">Step Functions tracing</text>
+  <text x="916" y="810" class="s">Step Functions tracing; spending caps</text>
 
   <path d="M441 716 V750" class="arrow"/>
   <path d="M720 716 V750" class="arrow"/>

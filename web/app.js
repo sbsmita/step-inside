@@ -422,8 +422,31 @@ function frameBlob(video, side) {
   return new Promise((r) => c.toBlob(r, "image/jpeg", 0.88));
 }
 
+/** Show the captured photo and wait for "Use this page" (true) or "Retake" / Cancel (false). */
+function confirmPage(blob, tell) {
+  const still = $("#look-still"), ask = $("#look-confirm"), url = URL.createObjectURL(blob);
+  still.src = url;
+  still.hidden = ask.hidden = false;
+  $("#look-box").hidden = true;
+  tell("Is this the page? Tap “Use this page” or “Retake”.");
+  return new Promise((done) => {
+    const finish = (ok) => {
+      still.hidden = ask.hidden = true;
+      still.removeAttribute("src");
+      URL.revokeObjectURL(url);
+      $("#look-use").onclick = $("#look-retake").onclick = null;
+      if (look) look.confirm = null;
+      done(ok);
+    };
+    $("#look-use").onclick = () => { tell("Bringing it to life…"); finish(true); };
+    $("#look-retake").onclick = () => { tell("Show me the page again."); finish(false); };
+    if (look) look.confirm = finish;
+  });
+}
+
 function stopLook() {
   if (!look) return;
+  look.confirm?.(false);
   look.running = false;
   look.stream.getTracks().forEach((t) => t.stop());
   look = null;
@@ -487,12 +510,17 @@ $("#look-start").onclick = async () => {
       return;
     }
     local.good = res.quality.ok ? local.good + 1 : 0;
-    if (local.good >= 2) { // readable two frames in a row: take the full-size photo
-      tell("Got it! Bringing it to life…");
+    if (local.good >= 2) { // readable two frames in a row: take the full-size photo, then ask before making a story
       const page = await frameBlob(video, 2048);
-      stopLook();
-      send("page", page, "camera.jpg");
-      return;
+      if (!local.running) return;
+      if (await confirmPage(page, tell)) {
+        stopLook();
+        send("page", page, "camera.jpg");
+        return;
+      }
+      if (!local.running) return;
+      local.good = 0;
+      continue;
     }
     tell(res.quality.ok ? "Hold still…" : res.quality.say);
     await sleep(200);

@@ -160,3 +160,18 @@ def test_a_walk_in_either_direction_is_the_action():
     observed, retry, reasons = critic.classify("walk-left", {**t, "dx": 0.2})
     assert observed == "walk-right" and reasons == []
     assert critic.classify("walk-right", {**t, "dx": 0.01})[0] == "unclear"
+
+
+def test_a_clip_that_turns_into_another_scene_is_rejected(tmp_path, base):
+    """The minister story (Oct 26): a man at a desk became two men standing over one second; frame 0 matched the
+    painting (815 features) and nothing caught it. The middle and last frames are now compared too."""
+    other = cv.GaussianBlur(np.random.default_rng(3).integers(0, 255, (H, W, 3), dtype=np.uint8), (0, 0), 2)
+    frames = [_frame(base, 300, 100) if i < 30 else _frame(other, 300, 100) for i in range(96)]
+    for i in range(30, 42):  # a slow morph, not a cut
+        a = (i - 29) / 13
+        frames[i] = cv.addWeighted(_frame(base, 300, 100), 1 - a, _frame(other, 300, 100), a, 0)
+    v = critic.verify(frames[0], _write(tmp_path / "m.mp4", frames), {"path": "still"})
+    assert "it turns into a different scene" in v["reasons"] and v["scores"]["continuity_inliers"] < 40
+    steady = [_frame(base, 300 + i, 100) for i in range(96)]
+    ok = critic.verify(steady[0], _write(tmp_path / "s.mp4", steady), {"path": "walk-right"})
+    assert "it turns into a different scene" not in ok["reasons"] and ok["scores"]["continuity_inliers"] >= 40

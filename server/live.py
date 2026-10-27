@@ -368,11 +368,12 @@ class Live:
             except LLMUnavailable as e:
                 with self.lock:
                     have = bool(st["shots"])
-                if not have and isinstance(e, planner.ContentFiltered):
-                    # A published page: the model may not copy it. Ask again with OpenCV's numbered lines, so the
-                    # model only points at lines (and fixes misread words); the words themselves come from OpenCV.
-                    log.warning("story agent blocked by the content filter; asking again in lines mode")
-                    sent_header = e.header_sent
+                if not have and (isinstance(e, planner.ContentFiltered) or planner.enabled()):
+                    # Blocked (a published page the model may not copy), throttled or unparseable: ask again with
+                    # OpenCV's numbered lines, so the model only points at lines and fixes misread words; the words
+                    # themselves come from OpenCV. Only if that fails too does the raw reading play.
+                    log.warning("story agent failed (%s); asking again in lines mode", e)
+                    sent_header = getattr(e, "header_sent", False)
                     for attempt in (1, 2):  # the filter is not deterministic: one more try is often enough
                         try:
                             planner.plan_from_lines(
@@ -388,9 +389,9 @@ class Live:
                             break
                         except planner.ContentFiltered as e2:
                             log.warning("lines mode blocked too (attempt %d): %s", attempt, e2)
-                        except LLMUnavailable as e2:
-                            log.warning("lines mode failed (%s)", e2)
-                            break
+                        except LLMUnavailable as e2:  # throttled or a broken reply: one more try, after a breath
+                            log.warning("lines mode failed (attempt %d): %s", attempt, e2)
+                            time.sleep(2)
                 if not have:
                     log.warning("story agent unavailable (%s); planning from OpenCV's reading", e)
                     header, shots = planner.fallback_plan([ln["text"] for ln in ocr])
@@ -802,6 +803,8 @@ class Live:
                 return
             if not (verdict["retry"] and attempt <= ANIMATE_RETRIES):
                 break
+            if verdict.get("observed") == "nothing" and (shot.get("action") or {}).get("path", "still") == "still":
+                break  # a frozen take of a quiet moment: a second take gets the same prompt, so keep the painting
         with self.lock:
             last = clip["tries"][-1]["verdict"] if clip["tries"] else None
             clip.update(status="rejected", verdict=last,

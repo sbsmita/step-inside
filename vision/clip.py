@@ -27,7 +27,7 @@ SSIM_W = 320
 T = dict(fidelity_inliers=40, fidelity_share=0.2, fidelity_ssim=0.8, text_limit=0.004, new_figures=3, figure_score=0.45,
          min_subject_speed=0.02, frozen_speed=0.01, net_move=0.08, wrong_way=0.05, jump_lift=0.05, sway_drift=0.05, sway_reversals=2,
          camera_speed=0.03, camera_ratio=0.6, cut_ssim=0.45, cut_drop=0.3, cut_hist=0.35,
-         loop_diff=10.0, loop_ssim=0.75, loop_min_s=2.0)
+         loop_diff=10.0, loop_ssim=0.75, loop_min_s=2.0, continuity_inliers=40)
 FIGURE_NAMES = {"person", "dog", "cat", "horse", "sheep", "cow", "teddy bear", "bird", "elephant", "bear"}
 
 
@@ -108,6 +108,12 @@ def _inliers(a: np.ndarray, b: np.ndarray) -> int:
     dst = np.float32([kb[m.trainIdx].pt for m in good])
     _, mask = cv.findHomography(src, dst, cv.RANSAC, 6.0)
     return int(mask.sum()) if mask is not None else 0
+
+
+def _pair(still: np.ndarray, frame: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """The painting and a clip frame at the same working size."""
+    frame = cv.resize(frame, (FLOW_W * 2, round(frame.shape[0] * FLOW_W * 2 / frame.shape[1])))
+    return cv.resize(still, (frame.shape[1], frame.shape[0]), interpolation=cv.INTER_AREA), frame
 
 
 def fidelity(still: np.ndarray, first: np.ndarray) -> dict:
@@ -271,6 +277,12 @@ def verify(still: np.ndarray, mp4: bytes, action: dict, actor_box: list | None =
     fid = fidelity(still, fr.colour[0]) if from_still else {"inliers": None, "own": None, "ssim": None, "ok": True}
     if not fid["ok"]:
         reasons.append("it does not start from the painting")
+    # Frame 0 is the painting itself (the video model is handed it), so it always matches. A clip that morphs into
+    # another scene, or that something fills, has lost the painting by its middle or end: real clips that did that
+    # kept 4-14 matches; the weakest clip that still looked right kept 58.
+    later = [_inliers(*_pair(still, fr.colour[i])) for i in (len(fr.colour) // 2, -1)] if from_still else []
+    if later and min(later) < T["continuity_inliers"]:
+        reasons.append("it turns into a different scene")
     text = lettering(fr.full)
     if text > T["text_limit"]:
         reasons.append("letters appeared in the picture")
@@ -296,7 +308,7 @@ def verify(still: np.ndarray, mp4: bytes, action: dict, actor_box: list | None =
         loops = False  # a fall ends somewhere else: hold its last frame rather than replay it
     ok = not reasons
     return {"ok": ok, "retry": (not ok) or retry, "reasons": reasons, "observed": observed,
-            "scores": {"fidelity_inliers": fid["inliers"], "fidelity_own": fid["own"], "fidelity_ssim": fid["ssim"],
+            "scores": {"fidelity_inliers": fid["inliers"], "continuity_inliers": min(later) if later else None, "fidelity_own": fid["own"], "fidelity_ssim": fid["ssim"],
                        "text_cover": round(text, 4),
                        "figures_still": fig_still, "figures_max": fig_max, **t, "cuts": n_cuts,
                        "loop_diff": lp["diff"], "loop_ssim": lp["ssim"]},

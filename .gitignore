@@ -12,3 +12,4 @@ vision/models/*.part
 cdk.out/
 node_modules/
 certs/
+web/show/

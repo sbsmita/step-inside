@@ -40,8 +40,8 @@
 
     <section class="hero">
       <h1>Live the story.</h1>
-      <p class="lede">Show it one page: a poem, a picture book, a screenshot. Moments later you're standing inside it,
-        painted all around you, every line read aloud. On screen, or in a VR headset.</p>
+      <p class="lede">Step Inside turns any story page into a narrated, filmed 360° world you can walk into, on screen
+        or in VR. Just upload a page or capture one from a storybook, and in a few minutes you're living the story.</p>
       <div class="actions">
         <button id="look-start" type="button" class="action lead">
           <span class="icon" aria-hidden="true">📷</span><span class="what">Scan with camera</span>
@@ -74,8 +74,13 @@
       <div id="look-overlay" class="look" hidden>
         <video id="look-video" playsinline muted></video>
         <div id="look-box" class="look-box" hidden></div>
+        <img id="look-still" class="look-still" alt="The captured page" hidden>
         <div class="look-hud">
           <p id="look-say" role="status" aria-live="assertive">Starting the camera…</p>
+          <div id="look-confirm" class="look-confirm" hidden>
+            <button id="look-use" type="button" class="action lead">✓ Use this page</button>
+            <button id="look-retake" type="button" class="pill">Retake</button>
+          </div>
           <button id="look-stop" type="button" class="pill">Cancel</button>
         </div>
       </div>

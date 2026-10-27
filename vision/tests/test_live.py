@@ -576,3 +576,53 @@ def test_a_blocked_story_agent_hands_over_to_lines_mode(monkeypatch, tmp_path):
     assert calls and "rabbit" in " ".join(calls[0]).lower()  # lines mode got OpenCV's reading
     assert st["title"] == "The Rabbit" and "lines mode" in st["models"]["planner"]
     assert st["shots"][0]["action"]["path"] == "sway"
+
+
+def test_a_throttled_story_agent_also_tries_lines_mode_before_the_raw_reading(monkeypatch, tmp_path):
+    """The Tortoise worksheet (Oct 26): the agent failed with something other than the filter, and the story played
+    OpenCV's raw reading. Any failure now gets lines mode first."""
+    from agents import planner
+    from server.live import Live
+    from server.storage import LocalStore
+    monkeypatch.setenv("STEP_INSIDE_LLM", "off")
+    monkeypatch.setattr(planner, "enabled", lambda: True)  # only the story agent "exists"; painter and voice stay off
+    calls = []
+
+    def throttled(page_jpg, on_header, on_shot, line_count=0):
+        raise planner.LLMUnavailable("ThrottlingException")
+
+    def lines_mode(page_jpg, ocr_lines, on_header, on_shot, send_header=True):
+        calls.append(1)
+        if len(calls) == 1:
+            raise planner.LLMUnavailable("ThrottlingException")  # the first retry is throttled too
+        on_header({**planner.clean_header({}), "title": "The Hare"})
+        on_shot({"text": ["The hare ran off."], "speaker": ["Narrator"], "see": "a hare", "effects": [],
+                 "action": {"subject": "hare", "motion": "runs", "path": "walk-right", "loop": False}})
+
+    monkeypatch.setattr(planner, "plan", throttled)
+    monkeypatch.setattr(planner, "plan_from_lines", lines_mode)
+    page = np.full((900, 700, 3), 240, np.uint8)
+    cv.putText(page, "The hare ran off.", (60, 400), cv.FONT_HERSHEY_DUPLEX, 1.6, (30, 30, 30), 3, cv.LINE_AA)
+    live = Live(LocalStore(tmp_path))
+    st = live.submit(page)
+    for _ in range(120):
+        st = live.get(st["id"])
+        if st["status"] != "running":
+            break
+        time.sleep(0.25)
+    assert len(calls) == 2 and st["title"] == "The Hare" and "lines mode" in st["models"]["planner"]
+
+
+def test_ocr_shreds_of_a_drawing_are_not_read_aloud():
+    from agents.planner import fallback_plan
+    _, shots = fallback_plan(["Once, there was a hare who told everyone how fast", "a a a a", "the han t", "he could run,",
+                              "the race"])
+    lines = [ln for s in shots for ln in s["text"]]
+    assert "a a a a" not in lines and "the han t" not in lines and "he could run," in lines and "the race" in lines
+
+
+def test_the_story_agent_is_told_to_copy_the_pages_own_art():
+    from agents.planner import DEFAULT_STYLE, SYSTEM, SYSTEM_LINES
+    assert DEFAULT_STYLE not in SYSTEM  # the default used to be the example, and the model copied it
+    assert "what YOU SEE" in SYSTEM and "what YOU SEE" in SYSTEM_LINES
+    assert "the page's picture for how characters look" in SYSTEM

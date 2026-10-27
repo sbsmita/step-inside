@@ -238,10 +238,26 @@ stayed still; daytime scenes: grass, flowers and bushes sway, houses and charact
 - **Sun detector:** at first it accepted a bright overcast patch about 40° wide as the sun; the blob is now limited
   to 0.6% of the image.
 
+**Review of the last three stories (Oct 26, evening), and what changed.**
+- **The paintings never matched the page.** In 10 of 11 stories the style was the prompt's own example text,
+  copied by the model. A cartoon boy became a realistic bearded man. The prompts now ask the agent to describe
+  what it sees in the page's picture, with no example to copy, and to draw each character as the page does.
+  Re-run on three real pages, each got its own description, and the king and minister got different looks.
+- **A worksheet played OpenCV's raw reading**, including shreds such as "a a a a the han t". The story agent had
+  failed with something other than the content filter, and only filter blocks used to get lines mode. Any failure
+  now gets lines mode (2 tries), and lines that are mostly one- and two-letter fragments are no longer read aloud.
+- **A clip that turned into another scene was accepted.** Fidelity compared the painting with frame 0 only, which
+  the video model copies from the painting, so it always passed (815 matches). The critic now also counts ORB +
+  RANSAC matches between the painting and the clip's middle and last frames. Calibration on all 57 real clip files on
+  disk: clips that morphed into another scene or were filled by something kept 4–14 matches; the weakest clip that
+  still looked right kept 58. Threshold: 40, the same minimum the first-frame check uses.
+- **Two frozen takes were paid for** on one quiet moment. A frozen take of a "still" moment is no longer retried,
+  because the second take gets the same prompt.
+
 **3D reconstruction** (`python -m eval.sfm_accuracy`, rendered room with exact ground truth): 24/24 keyframes
 placed, 0.145 px median reprojection error, camera path error 0.05 cm mean, 354k dense points (99.2% agreed).
 
-**Tests** (`uv run pytest`, 99): the streamed-object splitter (chunks, nesting, malformed objects); the reading
+**Tests** (`uv run pytest`, 108): the streamed-object splitter (chunks, nesting, malformed objects); the reading
 check (skipped lines found, slips fixed, logos/links ignored); the quota bucket; the world seam; the lettering
 check; light-on-dark posters; the live API end to end without models; the story queue cap; actions folded into
 paths; the actor agent and its judge; world life (wind, sun, lamps, haze); the clip critic; the animator's
